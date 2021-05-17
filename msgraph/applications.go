@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/manicminer/hamilton/internal/utils"
 	"github.com/manicminer/hamilton/odata"
 )
 
@@ -144,6 +145,62 @@ func (c *ApplicationsClient) Delete(ctx context.Context, id string) (int, error)
 	})
 	if err != nil {
 		return status, fmt.Errorf("ApplicationsClient.BaseClient.Delete(): %v", err)
+	}
+	return status, nil
+}
+
+// AddKey appends a new key credential to an Application.
+func (c *ApplicationsClient) AddKey(ctx context.Context, applicationId string, keyCredential KeyCredential) (int, error) {
+	var status int
+	data := struct {
+		KeyCredential KeyCredential `json:"keyCredential"`
+		Proof         string        `json:"proof"`
+	}{
+		KeyCredential: keyCredential,
+		Proof:         "",
+	}
+	body, err := json.Marshal(data)
+	if err != nil {
+		return status, fmt.Errorf("json.Marshal(): %v", err)
+	}
+	_, status, _, err = c.BaseClient.Post(ctx, PostHttpRequestInput{
+		Body:             body,
+		ValidStatusCodes: []int{http.StatusOK, http.StatusCreated},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/applications/%s/addKey", applicationId),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return status, fmt.Errorf("ApplicationsClient.BaseClient.Post(): %v", err)
+	}
+	return status, nil
+}
+
+// RemoveKey removes a password credential from an Application.
+func (c *ApplicationsClient) RemoveKey(ctx context.Context, applicationId string, keyCredential KeyCredential) (int, error) {
+	var status int
+	proof := utils.StringPtr("")
+	body, err := json.Marshal(struct {
+		KeyId *string `json:"keyId"`
+		Proof *string `json:"proof"`
+	}{
+		KeyId: keyCredential.KeyId,
+		Proof: proof,
+	})
+	if err != nil {
+		return status, fmt.Errorf("json.Marshal(): %v", err)
+	}
+	_, status, _, err = c.BaseClient.Post(ctx, PostHttpRequestInput{
+		Body:             body,
+		ValidStatusCodes: []int{http.StatusOK, http.StatusNoContent},
+		Uri: Uri{
+			Entity:      fmt.Sprintf("/applications/%s/removeKey", applicationId),
+			HasTenantId: true,
+		},
+	})
+	if err != nil {
+		return status, fmt.Errorf("ApplicationsClient.BaseClient.Post(): %v", err)
 	}
 	return status, nil
 }

@@ -1,6 +1,7 @@
 package msgraph_test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -15,6 +16,26 @@ type ApplicationsClientTest struct {
 	client       *msgraph.ApplicationsClient
 	randomString string
 }
+
+const certificateData string = `-----BEGIN CERTIFICATE-----
+MIIDCjCCAfICCQCJOOUlBxUxWDANBgkqhkiG9w0BAQsFADBHMQswCQYDVQQGEwJH
+QjEWMBQGA1UECgwNV2lkZ2V0cywgSW5jLjEgMB4GA1UEAwwXd2lkZ2V0cy1hcHAt
+Y2VydGlmaWNhdGUwHhcNMjEwNTE3MDkwMDA3WhcNMzEwNTE1MDkwMDA3WjBHMQsw
+CQYDVQQGEwJHQjEWMBQGA1UECgwNV2lkZ2V0cywgSW5jLjEgMB4GA1UEAwwXd2lk
+Z2V0cy1hcHAtY2VydGlmaWNhdGUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQCsjxFwrV0MO5fUA/eeVSXc1h5uG7rAG5ClYYruWtE/W3mZLhGYVr4wK7d3
+UrDFp4kh5V0avoBw9h7eOH39Ycx74Xfqz+5aBHcI55RK3Lf7NcmVu0yUiuUxx9Z7
+B7IvKSOYoETxvLL31FYeRmpu01cWuzwioBfJotO2+eLe6h6nXzfkAg7/l1uMnAB4
+wvcIIJSuh1Qp4LNfz0twxA7QDL1fhQGV+SDy0uMIj6+IzXI85MdZfZvOpCEffJjv
+NVvyk3CtIDrCF+lXhHy2k7fp+Tvv2q5q4kWQGpNJlnOYB9TQ2AgQBQArvm+AjRiL
+vMxiR8FD45npSCSgR2yLd9mVlxFzAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAGeH
+OWC2Z7V+fitTIQA5JgUsX6xs1hpGFkNZX0btRALSY1RMx50Nx+cImt0wNNh9+Tv7
+16htG3TofNdC4P9dRK8SyivgaDtwgKWAHMzGlO891iahU/f9XEYH5ozczN8bcOPf
+RIzgwf264lj6jmmSLAxTaMMBDGvKsas4A59iCUSBKk4r0pDal+tAYKZjHzEGGeWI
+ImyRqWTm6sPrfeUB6PViReSibXJM5tUgUAE8YH7DmMadTrfLDB7hFV3vbNm2JkQw
+ekf0R5MshXOcXl7dC9UcGyfLWk9prNJEKu3ZOM1S3y2xQLqEI2/c3ySlv1cw5vQq
+svkIO1MgRxraNnGpybQ=
+-----END CERTIFICATE-----`
 
 func TestApplicationsClient(t *testing.T) {
 	c := ApplicationsClientTest{
@@ -35,6 +56,7 @@ func TestApplicationsClient(t *testing.T) {
 	testApplicationsClient_RemoveOwners(t, c, *app.ID, owners)
 	app.AppendOwner(c.client.BaseClient.Endpoint, c.client.BaseClient.ApiVersion, (*owners)[0])
 	testApplicationsClient_AddOwners(t, c, app)
+	testApplicationsClient_AddKey(t, c, app)
 	pwd := testApplicationsClient_AddPassword(t, c, app)
 	testApplicationsClient_RemovePassword(t, c, app, pwd)
 	testApplicationsClient_List(t, c)
@@ -166,6 +188,22 @@ func testApplicationsClient_RemoveOwners(t *testing.T, c ApplicationsClientTest,
 	}
 	if status < 200 || status >= 300 {
 		t.Fatalf("ApplicationsClient.RemoveOwners(): invalid status: %d", status)
+	}
+}
+
+func testApplicationsClient_AddKey(t *testing.T, c ApplicationsClientTest, a *msgraph.Application) {
+	key := msgraph.KeyCredential{
+		DisplayName: utils.StringPtr("test certificate"),
+		Key:         utils.StringPtr(base64.StdEncoding.EncodeToString([]byte(certificateData))),
+		Type:        msgraph.KeyCredentialTypeAsymmetricX509Cert,
+		Usage:       msgraph.KeyCredentialUsageVerify,
+	}
+	status, err := c.client.AddKey(c.connection.Context, *a.ID, key)
+	if err != nil {
+		t.Fatalf("ApplicationsClient.AddKey(): %v", err)
+	}
+	if status < 200 || status >= 300 {
+		t.Fatalf("ApplicationsClient.AddKey(): invalid status: %d", status)
 	}
 }
 
